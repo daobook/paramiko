@@ -289,8 +289,9 @@ class _SSH_GSSAPI_OLD(_SSH_GSSAuth):
         self._username = username
         self._gss_host = target
         targ_name = gssapi.Name(
-            "host@" + self._gss_host, gssapi.C_NT_HOSTBASED_SERVICE
+            f"host@{self._gss_host}", gssapi.C_NT_HOSTBASED_SERVICE
         )
+
         ctx = gssapi.Context()
         ctx.flags = self._gss_flags
         if desired_mech is None:
@@ -313,7 +314,7 @@ class _SSH_GSSAPI_OLD(_SSH_GSSAuth):
             else:
                 token = self._gss_ctxt.step(recv_token)
         except gssapi.GSSException:
-            message = "{} Target: {}".format(sys.exc_info()[1], self._gss_host)
+            message = f"{sys.exc_info()[1]} Target: {self._gss_host}"
             raise gssapi.GSSException(message)
         self._gss_ctxt_status = self._gss_ctxt.established
         return token
@@ -332,18 +333,16 @@ class _SSH_GSSAPI_OLD(_SSH_GSSAuth):
                  message.
         """
         self._session_id = session_id
-        if not gss_kex:
-            mic_field = self._ssh_build_mic(
-                self._session_id,
-                self._username,
-                self._service,
-                self._auth_method,
-            )
-            mic_token = self._gss_ctxt.get_mic(mic_field)
-        else:
+        if gss_kex:
             # for key exchange with gssapi-keyex
-            mic_token = self._gss_srv_ctxt.get_mic(self._session_id)
-        return mic_token
+            return self._gss_srv_ctxt.get_mic(self._session_id)
+        mic_field = self._ssh_build_mic(
+            self._session_id,
+            self._username,
+            self._service,
+            self._auth_method,
+        )
+        return self._gss_ctxt.get_mic(mic_field)
 
     def ssh_accept_sec_context(self, hostname, recv_token, username=None):
         """
@@ -398,9 +397,7 @@ class _SSH_GSSAPI_OLD(_SSH_GSSAuth):
 
         :return: ``True`` if credentials are delegated, otherwise ``False``
         """
-        if self._gss_srv_ctxt.delegated_cred is not None:
-            return True
-        return False
+        return self._gss_srv_ctxt.delegated_cred is not None
 
     def save_client_creds(self, client_token):
         """
@@ -475,9 +472,9 @@ class _SSH_GSSAPI_NEW(_SSH_GSSAuth):
         self._username = username
         self._gss_host = target
         targ_name = gssapi.Name(
-            "host@" + self._gss_host,
-            name_type=gssapi.NameType.hostbased_service,
+            f"host@{self._gss_host}", name_type=gssapi.NameType.hostbased_service
         )
+
         if desired_mech is not None:
             mech, __ = decoder.decode(desired_mech)
             if mech.__str__() != self._krb5_mech:
@@ -512,18 +509,16 @@ class _SSH_GSSAPI_NEW(_SSH_GSSAuth):
         :rtype: str
         """
         self._session_id = session_id
-        if not gss_kex:
-            mic_field = self._ssh_build_mic(
-                self._session_id,
-                self._username,
-                self._service,
-                self._auth_method,
-            )
-            mic_token = self._gss_ctxt.get_signature(mic_field)
-        else:
+        if gss_kex:
             # for key exchange with gssapi-keyex
-            mic_token = self._gss_srv_ctxt.get_signature(self._session_id)
-        return mic_token
+            return self._gss_srv_ctxt.get_signature(self._session_id)
+        mic_field = self._ssh_build_mic(
+            self._session_id,
+            self._username,
+            self._service,
+            self._auth_method,
+        )
+        return self._gss_ctxt.get_signature(mic_field)
 
     def ssh_accept_sec_context(self, hostname, recv_token, username=None):
         """
@@ -579,9 +574,7 @@ class _SSH_GSSAPI_NEW(_SSH_GSSAuth):
         :return: ``True`` if credentials are delegated, otherwise ``False``
         :rtype: bool
         """
-        if self._gss_srv_ctxt.delegated_creds is not None:
-            return True
-        return False
+        return self._gss_srv_ctxt.delegated_creds is not None
 
     def save_client_creds(self, client_token):
         """
@@ -645,7 +638,7 @@ class _SSH_SSPI(_SSH_GSSAuth):
         self._username = username
         self._gss_host = target
         error = 0
-        targ_name = "host/" + self._gss_host
+        targ_name = f"host/{self._gss_host}"
         if desired_mech is not None:
             mech, __ = decoder.decode(desired_mech)
             if mech.__str__() != self._krb5_mech:
@@ -658,7 +651,7 @@ class _SSH_SSPI(_SSH_GSSAuth):
             error, token = self._gss_ctxt.authorize(recv_token)
             token = token[0].Buffer
         except pywintypes.error as e:
-            e.strerror += ", Target: {}".format(self._gss_host)
+            e.strerror += f", Target: {self._gss_host}"
             raise
 
         if error == 0:
@@ -688,18 +681,16 @@ class _SSH_SSPI(_SSH_GSSAuth):
                  message.
         """
         self._session_id = session_id
-        if not gss_kex:
-            mic_field = self._ssh_build_mic(
-                self._session_id,
-                self._username,
-                self._service,
-                self._auth_method,
-            )
-            mic_token = self._gss_ctxt.sign(mic_field)
-        else:
+        if gss_kex:
             # for key exchange with gssapi-keyex
-            mic_token = self._gss_srv_ctxt.sign(self._session_id)
-        return mic_token
+            return self._gss_srv_ctxt.sign(self._session_id)
+        mic_field = self._ssh_build_mic(
+            self._session_id,
+            self._username,
+            self._service,
+            self._auth_method,
+        )
+        return self._gss_ctxt.sign(mic_field)
 
     def ssh_accept_sec_context(self, hostname, username, recv_token):
         """
@@ -714,7 +705,7 @@ class _SSH_SSPI(_SSH_GSSAuth):
         """
         self._gss_host = hostname
         self._username = username
-        targ_name = "host/" + self._gss_host
+        targ_name = f"host/{self._gss_host}"
         self._gss_srv_ctxt = sspi.ServerAuth("Kerberos", spn=targ_name)
         error, token = self._gss_srv_ctxt.authorize(recv_token)
         token = token[0].Buffer

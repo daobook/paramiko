@@ -91,7 +91,7 @@ class SFTPFile(BufferedFile):
         # __del__.)
         if self._closed:
             return
-        self.sftp._log(DEBUG, "close({})".format(u(hexlify(self.handle))))
+        self.sftp._log(DEBUG, f"close({u(hexlify(self.handle))})")
         if self.pipelined:
             self.sftp._finish_responses(self)
         BufferedFile.close(self)
@@ -113,7 +113,7 @@ class SFTPFile(BufferedFile):
         k = [
             x for x in list(self._prefetch_extents.values()) if x[0] <= offset
         ]
-        if len(k) == 0:
+        if not k:
             return False
         k.sort(key=lambda x: x[0])
         buf_offset, buf_size = k[-1]
@@ -137,7 +137,7 @@ class SFTPFile(BufferedFile):
         collected in the prefetch buffer so far.
         """
         k = [i for i in self._prefetch_data.keys() if i <= offset]
-        if len(k) == 0:
+        if not k:
             return None
         index = max(k)
         buf_offset = offset - index
@@ -412,8 +412,7 @@ class SFTPFile(BufferedFile):
         )
         msg.get_text()  # ext
         msg.get_text()  # alg
-        data = msg.get_remainder()
-        return data
+        return msg.get_remainder()
 
     def set_pipelined(self, pipelined=True):
         """
@@ -472,7 +471,7 @@ class SFTPFile(BufferedFile):
             chunk = min(self.MAX_REQUEST_SIZE, file_size - n)
             chunks.append((n, chunk))
             n += chunk
-        if len(chunks) > 0:
+        if chunks:
             self._start_prefetch(chunks)
 
     def readv(self, chunks):
