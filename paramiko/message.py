@@ -48,10 +48,7 @@ class Message(object):
             the byte stream to use as the message content (passed in only when
             decomposing a message).
         """
-        if content is not None:
-            self.packet = BytesIO(content)
-        else:
-            self.packet = BytesIO()
+        self.packet = BytesIO(content) if content is not None else BytesIO()
 
     def __str__(self):
         """
@@ -63,7 +60,7 @@ class Message(object):
         """
         Returns a string representation of this object, for debugging.
         """
-        return "paramiko.Message(" + repr(self.packet.getvalue()) + ")"
+        return f"paramiko.Message({repr(self.packet.getvalue())})"
 
     def asbytes(self):
         """

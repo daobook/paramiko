@@ -124,8 +124,7 @@ class HostKeys(MutableMapping):
         """
         with open(filename, "w") as f:
             for e in self._entries:
-                line = e.to_line()
-                if line:
+                if line := e.to_line():
                     f.write(line)
 
     def lookup(self, hostname):
@@ -146,8 +145,7 @@ class HostKeys(MutableMapping):
                 self._hostkeys = hostkeys
 
             def __iter__(self):
-                for k in self.keys():
-                    yield k
+                yield from self.keys()
 
             def __len__(self):
                 return len(self.keys())
@@ -201,15 +199,15 @@ class HostKeys(MutableMapping):
 
         :returns bool:
         """
-        for h in entry.hostnames:
-            if (
+        return any(
+            (
                 h == hostname
                 or h.startswith("|1|")
                 and not hostname.startswith("|1|")
                 and constant_time_bytes_eq(self.hash_host(hostname, h), h)
-            ):
-                return True
-        return False
+            )
+            for h in entry.hostnames
+        )
 
     def check(self, hostname, key):
         """
@@ -236,8 +234,7 @@ class HostKeys(MutableMapping):
         self._entries = []
 
     def __iter__(self):
-        for k in self.keys():
-            yield k
+        yield from self.keys()
 
     def __len__(self):
         return len(self.keys())
@@ -249,11 +246,15 @@ class HostKeys(MutableMapping):
         return ret
 
     def __delitem__(self, key):
-        index = None
-        for i, entry in enumerate(self._entries):
-            if self._hostname_matches(key, entry):
-                index = i
-                break
+        index = next(
+            (
+                i
+                for i, entry in enumerate(self._entries)
+                if self._hostname_matches(key, entry)
+            ),
+            None,
+        )
+
         if index is None:
             raise KeyError(key)
         self._entries.pop(index)
@@ -283,10 +284,7 @@ class HostKeys(MutableMapping):
         return ret
 
     def values(self):
-        ret = []
-        for k in self.keys():
-            ret.append(self.lookup(k))
-        return ret
+        return [self.lookup(k) for k in self.keys()]
 
     @staticmethod
     def hash_host(hostname, salt=None):
@@ -307,7 +305,7 @@ class HostKeys(MutableMapping):
             salt = decodebytes(b(salt))
         assert len(salt) == sha1().digest_size
         hmac = HMAC(salt, b(hostname), sha1).digest()
-        hostkey = "|1|{}|{}".format(u(encodebytes(salt)), u(encodebytes(hmac)))
+        hostkey = f"|1|{u(encodebytes(salt))}|{u(encodebytes(hmac))}"
         return hostkey.replace("\n", "")
 
 
@@ -366,7 +364,7 @@ class HostKeyEntry:
             elif keytype == "ssh-ed25519":
                 key = Ed25519Key(data=decodebytes(key))
             else:
-                log.info("Unable to handle key of type {}".format(keytype))
+                log.info(f"Unable to handle key of type {keytype}")
                 return None
 
         except binascii.Error as e:

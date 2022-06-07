@@ -78,7 +78,7 @@ class AgentSSH(object):
         if ptype != SSH2_AGENT_IDENTITIES_ANSWER:
             raise SSHException("could not get keys from ssh-agent")
         keys = []
-        for i in range(result.get_int()):
+        for _ in range(result.get_int()):
             keys.append(AgentKey(self, result.get_binary()))
             result.get_string()
         self._keys = tuple(keys)
@@ -288,7 +288,7 @@ class AgentServerProxy(AgentSSH):
         self.__t = t
         self._dir = tempfile.mkdtemp("sshproxy")
         os.chmod(self._dir, stat.S_IRWXU)
-        self._file = self._dir + "/sshproxy.ssh"
+        self._file = f"{self._dir}/sshproxy.ssh"
         self.thread = AgentLocalProxy(self)
         self.thread.start()
 
